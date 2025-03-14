@@ -4,7 +4,7 @@ import json
 import matplotlib.pyplot as plt
 
 # 📥 Wczytanie danych z pliku CSV, dodanie nagłówków ręcznie
-df = pd.read_csv("data_log_2_50k.csv", names=["timestamp", "device", "gpio"], header=None)
+df = pd.read_csv("data_log.csv", names=["timestamp", "device", "gpio"], header=None)
 
 # 📌 Konwersja czasu na format datetime
 df["timestamp"] = pd.to_datetime(df["timestamp"])
