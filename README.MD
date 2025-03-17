@@ -1,23 +1,79 @@
-# Przed uruchomieniem:
-Uruchom na pico skrypt
+# Instrukcja uruchomienia serwera czujników Pico W
+
+## Przed uruchomieniem:
+
+### 1️. Sprawdzenie adresu MAC urządzenia Pico W
+Najpierw uruchom na swoim Pico skrypt:
 ```bash
 checkMAC.py
 ```
 
-Następnie utwórz plik config.json:
-usuń komentarze po skopiowaniu z pliku json
-```bash
+### 2️ Utworzenie pliku `config.json`
+Usuń komentarze po skopiowaniu z pliku JSON:
+```json
 {
     "devices": {
-        "11:22:33:44:55:66": { # wpisz swój adres MAC który wypisał ci skrypt checkMAC.py na pico
+        "11:22:33:44:55:66": {  
             "pins": {
                 "26": "analog",
-                "1": "digital" # tutaj możesz dodać inne piny
+                "1": "digital"
             },
-            "interval": 5 # co ile sekund chcesz otrzymywac informacje z pico (czujników)
+            "interval": 5 
         }
     }
 }
 ```
+* **Wpisz swój adres MAC**, który wypisał skrypt `checkMAC.py` na Pico.  
+* **Dostosuj piny i interwał**, jeśli chcesz.
 
+---
 
+## Instalacja i uruchomienie serwera
+
+### 1️ **Stworzenie i aktywowanie wirtualnego środowiska**
+W katalogu projektu uruchom:
+```bash
+python3 -m venv venv
+source venv/bin/activate  # Linux/MacOS
+venv\Scripts\activate    # Windows
+```
+
+### 2 **Instalacja zależności**
+Upewnij się, że masz zainstalowane wymagane pakiety:
+```bash
+pip install -r requirements.txt
+```
+
+### 3️ **Uruchomienie serwera**
+```bash
+python server.py
+```
+Serwer powinien być teraz dostępny pod adresem:
+```
+http://127.0.0.1:5000
+http://192.168.X.X:5000  # Adres lokalny
+```
+
+---
+
+## Dostępne API
+
+###  **Pobranie konfiguracji urządzenia**
+```bash
+GET /device_config/<mac_address>
+```
+
+### **Odbiór danych z Pico**
+```bash
+POST /data
+```
+
+### **Pobranie pełnego podsumowania**
+```bash
+GET /summary_data
+```
+
+### **Pobranie ostatniego wpisu z podsumowania**
+```bash
+GET /latest_summary
+```
