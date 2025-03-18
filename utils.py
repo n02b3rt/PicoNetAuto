@@ -12,14 +12,3 @@ def log_error(error_message):
     with open(LOG_FILE, mode="a", newline="") as file:
         writer = csv.writer(file)
         writer.writerow([error_time, error_message])
-
-DRY_VALUE = 49900
-WET_VALUE = 18324
-
-def calculate_moisture(value):
-    try:
-        moisture = (DRY_VALUE - value) / (DRY_VALUE - WET_VALUE)
-        return max(0, min(1, moisture))
-    except Exception as e:
-        log_error(f"Error in calculate_moisture: {str(e)}")
-        return 0

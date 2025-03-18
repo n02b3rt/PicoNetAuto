@@ -1,14 +1,16 @@
 from flask import Flask, request, jsonify
 import json
-import csv
 import os
 import threading
 import pandas as pd
 from datetime import datetime
-from utils import log_error, calculate_moisture
+from utils import log_error
 from summary_generator import generate_summary
+from DataProcessor import DataProcessor
 
-# Wczytanie konfiguracji urządzeń
+app = Flask(__name__)
+
+# Wczytanie konfiguracji z pliku config.json
 try:
     with open("config.json", "r") as f:
         config = json.load(f)
@@ -16,28 +18,38 @@ except Exception as e:
     log_error(f"Error loading config.json: {str(e)}")
     config = {"devices": {}}
 
-app = Flask(__name__)
-
 DATA_FOLDER = "data"
 SUMMARY_FOLDER = "summary"
 SUMMARY_FILE = os.path.join(SUMMARY_FOLDER, "summary_data.csv")
 
-# Tworzenie folderów jeśli nie istnieją
+# Tworzymy foldery, jeśli nie istnieją
 os.makedirs(DATA_FOLDER, exist_ok=True)
 os.makedirs(SUMMARY_FOLDER, exist_ok=True)
 
 @app.route('/device_config/<mac_address>', methods=['GET'])
 def get_device_config(mac_address):
-    """Zwraca konfigurację dla danego Pico W"""
+    """Zwraca uproszczoną konfigurację dla danego urządzenia Pico W."""
     try:
         if mac_address in config["devices"]:
             device_config = config["devices"][mac_address]
-            return jsonify(device_config)
+            # Tworzymy uproszczony obiekt konfiguracji
+            simplified_config = {
+                "interval": device_config.get("interval", 5),
+                "pins": {}
+            }
+            # Dla każdego pinu zwracamy tylko typ, np. "analog" lub "digital"
+            for pin, details in device_config.get("pins", {}).items():
+                if isinstance(details, dict):
+                    simplified_config["pins"][pin] = details.get("type", details)
+                else:
+                    simplified_config["pins"][pin] = details
+            return jsonify(simplified_config)
         else:
             return jsonify({"error": "Device not found"}), 404
     except Exception as e:
         log_error(f"Error in /device_config: {str(e)}")
         return jsonify({"error": "Internal Server Error"}), 500
+
 
 @app.route('/summary_data', methods=['GET'])
 def get_summary_data():
@@ -64,12 +76,15 @@ def get_latest_summary():
 
 @app.route('/data', methods=['POST'])
 def receive_data():
-    """Odbiera dane GPIO i ADC z Pico W, oblicza wilgotność i zapisuje do CSV"""
     try:
         data = request.json
+        print("Otrzymane dane:", data)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         mac_address = data.get("device", "unknown")
         gpio_data = data.get("gpio", {})
+
+        print("MAC Address:", mac_address)
+        print("GPIO data:", gpio_data)
 
         if not isinstance(gpio_data, dict):
             log_error(f"Invalid GPIO format from {mac_address}")
@@ -79,26 +94,26 @@ def receive_data():
             log_error(f"Unknown device: {mac_address}")
             return jsonify({"error": "Unknown device"}), 400
 
+        device_config = config["devices"][mac_address]
+        # Numer Pico ustalamy na podstawie kolejności urządzeń w configu
         pico_number = list(config["devices"].keys()).index(mac_address) + 1
 
-        for pin, value in gpio_data.items():
-            moisture = round(calculate_moisture(value), 2)
-            sensor_data = {"timestamp": timestamp, "device": mac_address, "raw": value, "moisture": moisture}
-            file_path = os.path.join(DATA_FOLDER, f"pico_{pico_number}_czujnik_pin{pin}.csv")
-            file_exists = os.path.isfile(file_path)
+        processor = DataProcessor(mac_address, device_config, timestamp, pico_number)
+        responses = processor.process_gpio_data(gpio_data)
 
-            with open(file_path, mode="a", newline="") as file:
-                writer = csv.DictWriter(file, fieldnames=sensor_data.keys())
-                if not file_exists:
-                    writer.writeheader()
-                writer.writerow(sensor_data)
+        print("Przetworzone odpowiedzi:", responses)
 
-        return jsonify({"status": "ok", "timestamp": timestamp, "device": mac_address})
+        return jsonify({
+            "status": "ok",
+            "timestamp": timestamp,
+            "device": mac_address,
+            "data": responses
+        })
     except Exception as e:
         log_error(f"Error in /data: {str(e)}")
         return jsonify({"error": "Internal Server Error"}), 500
 
-# Uruchomienie wątku dla generowania podsumowań
+# Uruchomienie wątku do generowania podsumowań (jeśli masz taką funkcję)
 t = threading.Thread(target=generate_summary, daemon=True)
 t.start()
 
