@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Ostatnie Odczyty z Czujników</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>📊 Ostatnie Odczyty z Czujników</h1>
+    <table border="1">
+        <tr>
+            <th>Czujnik</th>
+            <th>Data</th>
+            <th>Wartość Przetworzona</th>
+            <th>Wartość RAW</th>
+            <th>Wykres</th>
+        </tr>
+        {% for sensor_name, reading in readings.items() %}
+        <tr>
+            <td>{{ sensor_name }}</td>
+            <td>{{ reading.get('timestamp', 'Brak danych') }}</td>
+            <td>
+                {% if reading.get("moisture") %}
+                    {{ reading.moisture }}
+                {% elif reading.get("temperature") %}
+                    {{ reading.temperature }}°C
+                {% elif reading.get("lux") %}
+                    {{ reading.lux }} lx
+                {% else %}
+                    Brak danych
+                {% endif %}
+            </td>
+            <td>
+                {% if reading.get("raw") %}
+                    {{ reading.raw }}
+                {% elif reading.get("humidity") %}
+                    {{ reading.humidity }}%
+                {% else %}
+                    Brak danych
+                {% endif %}
+            </td>
+            <td><a href="{{ url_for('chart', sensor_name=sensor_name) }}">📈 Zobacz wykres</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

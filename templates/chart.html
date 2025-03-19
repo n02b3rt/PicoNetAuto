@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Wykres {{ sensor_name }}</title>
+</head>
+<body>
+    <h1>📈 Wykres: {{ sensor_name }}</h1>
+    <img src="data:image/png;base64,{{ img_base64 }}" alt="Wykres czujnika {{ sensor_name }}">
+    <br><br>
+    <a href="{{ url_for('index') }}">⬅ Powrót do strony głównej</a>
+</body>
+</html>
