@@ -1,6 +1,6 @@
 import os
 import csv
-from utils import log_error  # Upewnij się, że funkcja log_error jest dostępna
+from utils import log_error
 
 # Domyślne wartości, gdyby w konfiguracji czujnika brakowało DRY/WET
 DEFAULT_DRY_VALUE = 49900
@@ -8,7 +8,6 @@ DEFAULT_WET_VALUE = 18324
 
 # Folder, w którym zapisywane będą pliki CSV
 DATA_FOLDER = "data"
-
 
 class DataProcessor:
     def __init__(self, mac_address, device_config, timestamp, pico_number):
@@ -31,6 +30,10 @@ class DataProcessor:
         responses = {}
         # Dla każdego pinu (klucz w słowniku gpio odpowiada kluczowi w config.json)
         for pin, value in gpio_data.items():
+            # Pominąć pin_21, bo dane DHT11 logujemy osobno
+            if pin == "pin_21":
+                continue
+
             # Pobieramy konfigurację dla danego pinu
             pin_config = self.device_config.get("pins", {}).get(pin)
             if (pin_config and isinstance(pin_config, dict) and pin_config.get("type") == "analog"):
