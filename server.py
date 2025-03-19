@@ -4,7 +4,8 @@ import os
 import threading
 import pandas as pd
 from datetime import datetime
-from utils import log_error
+from latest_data_aggregator import LatestDataAggregator
+from utils import log_error, log_temperature_reading
 from summary_generator import generate_summary
 from DataProcessor import DataProcessor
 
@@ -90,12 +91,24 @@ def receive_data():
             log_error(f"Invalid GPIO format from {mac_address}")
             return jsonify({"error": "Invalid gpio format"}), 400
 
+        # Jeśli mamy dane z pinu "pin_21" (czujnik DHT11)
+        # oraz adres MAC jest taki, jak oczekiwany, wykonujemy logowanie i zwracamy odpowiedź,
+        # pomijając resztę przetwarzania (np. liczenie wilgotności gleby).
+        if "pin_21" in gpio_data and mac_address == "2c:cf:67:9d:17:5b":
+            log_temperature_reading(timestamp, mac_address, gpio_data)
+            dht_data = gpio_data["pin_21"]
+            return jsonify({
+                "status": "ok",
+                "timestamp": timestamp,
+                "device": mac_address,
+                "data": {"dht11": dht_data}
+            })
+
         if mac_address not in config["devices"]:
             log_error(f"Unknown device: {mac_address}")
             return jsonify({"error": "Unknown device"}), 400
 
         device_config = config["devices"][mac_address]
-        # Numer Pico ustalamy na podstawie kolejności urządzeń w configu
         pico_number = list(config["devices"].keys()).index(mac_address) + 1
 
         processor = DataProcessor(mac_address, device_config, timestamp, pico_number)
@@ -111,6 +124,21 @@ def receive_data():
         })
     except Exception as e:
         log_error(f"Error in /data: {str(e)}")
+        return jsonify({"error": "Internal Server Error"}), 500
+
+
+@app.route('/latest_data', methods=['GET'])
+def latest_data():
+    """
+    API, które zbiera ostatnie dane ze wszystkich plików CSV w folderze DATA_FOLDER i zwraca je jako CSV.
+    W danych każdej pozycji pojawi się też 'sensor_name'.
+    """
+    try:
+        aggregator = LatestDataAggregator(DATA_FOLDER)
+        data = aggregator.get_latest_data()
+        csv_string = aggregator.to_csv_string(data)
+        return csv_string, 200, {'Content-Type': 'text/csv'}
+    except Exception as e:
         return jsonify({"error": "Internal Server Error"}), 500
 
 # Uruchomienie wątku do generowania podsumowań (jeśli masz taką funkcję)
